@@ -1,6 +1,4 @@
 {
-  "large_room_chance": 80,
-  "large_room_spacing": 6,
   "rooms": [
     "lob:room_crossing",
     "lob:room_stairwell",

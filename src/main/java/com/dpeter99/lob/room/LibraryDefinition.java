@@ -11,21 +11,17 @@ import net.minecraft.resources.RegistryFixedCodec;
 /**
  * The room mix of one library dimension, loaded from {@code data/<ns>/lob/library/*.json}.
  *
- * @param rooms                 rooms that may appear; small and large rooms are separated automatically
- * @param largeRoomSpacing      lattice period in cells for large rooms; every large room must fit inside one lattice slot
- * @param largeRoomChancePercent chance that a lattice slot contains a large room
+ * @param rooms rooms that may appear; each room brings its own size and weight
  */
-public record LibraryDefinition(HolderSet<RoomDefinition> rooms, int largeRoomSpacing, int largeRoomChancePercent) {
+public record LibraryDefinition(HolderSet<RoomDefinition> rooms) {
     public static final Codec<LibraryDefinition> CODEC = RecordCodecBuilder.create(i -> i.group(
-            RegistryCodecs.homogeneousList(LobRegistries.ROOM).fieldOf("rooms").forGetter(LibraryDefinition::rooms),
-            Codec.intRange(1, 64).optionalFieldOf("large_room_spacing", 8).forGetter(LibraryDefinition::largeRoomSpacing),
-            Codec.intRange(0, 100).optionalFieldOf("large_room_chance", 100).forGetter(LibraryDefinition::largeRoomChancePercent)
+            RegistryCodecs.homogeneousList(LobRegistries.ROOM).fieldOf("rooms").forGetter(LibraryDefinition::rooms)
     ).apply(i, LibraryDefinition::new));
 
     public static final Codec<Holder<LibraryDefinition>> HOLDER_CODEC = RegistryFixedCodec.create(LobRegistries.LIBRARY);
 
-    /** Builds the immutable resolver for this library; throws with a clear message on invalid room sizes. */
+    /** Builds the immutable resolver for this library; throws with a clear message on invalid rooms. */
     public RoomResolver createResolver() {
-        return new RoomResolver(rooms.stream().map(Holder::value).toList(), largeRoomSpacing, largeRoomChancePercent);
+        return new RoomResolver(rooms.stream().map(Holder::value).toList());
     }
 }

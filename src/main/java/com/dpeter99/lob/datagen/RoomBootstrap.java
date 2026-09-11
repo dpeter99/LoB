@@ -37,12 +37,12 @@ public final class RoomBootstrap {
     }
 
     static void rooms(BootstrapContext<RoomDefinition> ctx) {
-        ctx.register(ROOM_BASIC, RoomDefinition.small(LobMod.id("room_basic"), 6));
-        ctx.register(ROOM_CROSSING, RoomDefinition.small(LobMod.id("room_crossing"), 3));
-        ctx.register(ROOM_STAIRWELL, RoomDefinition.small(LobMod.id("room_stairwell"), 2));
+        ctx.register(ROOM_BASIC, RoomDefinition.small(LobMod.id("room_basic"), 60));
+        ctx.register(ROOM_CROSSING, RoomDefinition.small(LobMod.id("room_crossing"), 30));
+        ctx.register(ROOM_STAIRWELL, RoomDefinition.small(LobMod.id("room_stairwell"), 20));
         // The same grand hall template is used with two different portal targets.
-        ctx.register(HALL_GRAND_TO_BETA, new RoomDefinition(LobMod.id("hall_grand"), new Vec3i(3, 2, 3), 3, Optional.of(LobDimensions.LIBRARY_BETA)));
-        ctx.register(HALL_GRAND_TO_ALPHA, new RoomDefinition(LobMod.id("hall_grand"), new Vec3i(3, 2, 3), 3, Optional.of(LobDimensions.LIBRARY_ALPHA)));
+        ctx.register(HALL_GRAND_TO_BETA, new RoomDefinition(LobMod.id("hall_grand"), new Vec3i(3, 2, 3), 2, Optional.of(LobDimensions.LIBRARY_BETA)));
+        ctx.register(HALL_GRAND_TO_ALPHA, new RoomDefinition(LobMod.id("hall_grand"), new Vec3i(3, 2, 3), 2, Optional.of(LobDimensions.LIBRARY_ALPHA)));
         ctx.register(HALL_EXIT, new RoomDefinition(LobMod.id("hall_exit"), new Vec3i(2, 1, 2), 1, Optional.of(net.minecraft.world.level.Level.OVERWORLD)));
     }
 
@@ -50,9 +50,9 @@ public final class RoomBootstrap {
         HolderGetter<RoomDefinition> rooms = ctx.lookup(LobRegistries.ROOM);
         ctx.register(LIBRARY_ALPHA, new LibraryDefinition(HolderSet.direct(
                 rooms.getOrThrow(ROOM_BASIC), rooms.getOrThrow(ROOM_CROSSING), rooms.getOrThrow(ROOM_STAIRWELL),
-                rooms.getOrThrow(HALL_GRAND_TO_BETA), rooms.getOrThrow(HALL_EXIT)), 8, 100));
+                rooms.getOrThrow(HALL_GRAND_TO_BETA), rooms.getOrThrow(HALL_EXIT))));
         ctx.register(LIBRARY_BETA, new LibraryDefinition(HolderSet.direct(
                 rooms.getOrThrow(ROOM_CROSSING), rooms.getOrThrow(ROOM_STAIRWELL),
-                rooms.getOrThrow(HALL_GRAND_TO_ALPHA), rooms.getOrThrow(HALL_EXIT)), 6, 80));
+                rooms.getOrThrow(HALL_GRAND_TO_ALPHA), rooms.getOrThrow(HALL_EXIT))));
     }
 }

@@ -9,6 +9,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
@@ -57,10 +58,13 @@ public final class TemplateStamper {
             placeFallback(region, origin, expectedSize, clip);
             return false;
         }
+        // Known shape and no waterlogging keep placement from reading neighbouring chunks, which
+        // is unsafe during the surface step.
         StructurePlaceSettings settings = new StructurePlaceSettings()
                 .setBoundingBox(clip)
                 .setIgnoreEntities(false)
-                .setKnownShape(true);
+                .setKnownShape(true)
+                .setLiquidSettings(LiquidSettings.IGNORE_WATERLOGGING);
         t.placeInWorld(region, origin, origin, settings, random, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
         return true;
     }

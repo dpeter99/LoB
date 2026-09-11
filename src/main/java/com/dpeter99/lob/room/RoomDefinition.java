@@ -15,8 +15,8 @@ import java.util.Optional;
  * One kind of library room, loaded from {@code data/<ns>/lob/library_room/*.json}.
  *
  * @param template     structure template whose size must be {@code sizeInCells * 16} on every axis
- * @param sizeInCells  footprint in 16-block cells; anything other than 1x1x1 is a "large" room
- * @param weight       relative pick weight among rooms of the same class (small or large)
+ * @param sizeInCells  footprint in 16-block cells, default 1x1x1
+ * @param weight       relative chance that a cell anchors this room
  * @param portalTarget dimension that portal blocks inside this room lead to, if any
  */
 public record RoomDefinition(Identifier template, Vec3i sizeInCells, int weight, Optional<ResourceKey<Level>> portalTarget) {

@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,12 +19,12 @@ class RoomResolverTest {
         return Identifier.fromNamespaceAndPath("lob", s);
     }
 
-    private static final RoomDefinition BASIC = RoomDefinition.small(id("basic"), 3);
-    private static final RoomDefinition RARE = RoomDefinition.small(id("rare"), 1);
-    private static final RoomDefinition HALL = new RoomDefinition(id("hall"), new Vec3i(3, 2, 3), 1, Optional.empty());
+    private static final RoomDefinition BASIC = RoomDefinition.small(id("basic"), 30);
+    private static final RoomDefinition RARE = RoomDefinition.small(id("rare"), 10);
+    private static final RoomDefinition HALL = new RoomDefinition(id("hall"), new Vec3i(3, 2, 3), 2, Optional.empty());
     private static final RoomDefinition TOWER = new RoomDefinition(id("tower"), new Vec3i(2, 4, 2), 1, Optional.empty());
 
-    private static final RoomResolver RESOLVER = new RoomResolver(List.of(BASIC, RARE, HALL, TOWER), 6, 100);
+    private static final RoomResolver RESOLVER = new RoomResolver(List.of(BASIC, RARE, HALL, TOWER));
 
     @Test
     void deterministic() {
@@ -34,16 +33,16 @@ class RoomResolverTest {
     }
 
     @Test
-    void everyCellCoveredByLargeRoomAgreesOnPlacement() {
-        int seen = 0;
-        for (int x = -24; x < 24; x++) {
-            for (int y = 0; y < 16; y++) {
-                for (int z = -24; z < 24; z++) {
+    void everyCellIsCoveredAndAllCellsOfARoomAgree() {
+        int large = 0;
+        for (int x = -16; x < 16; x++) {
+            for (int y = 0; y < 12; y++) {
+                for (int z = -16; z < 16; z++) {
                     CellPos cell = new CellPos(x, y, z);
                     RoomResolver.Placement p = RESOLVER.resolve(1234L, cell);
                     assertTrue(p.contains(cell), "placement must cover the queried cell " + cell);
                     if (p.room().isLarge()) {
-                        seen++;
+                        large++;
                         Vec3i s = p.room().sizeInCells();
                         for (int dx = 0; dx < s.getX(); dx++)
                             for (int dy = 0; dy < s.getY(); dy++)
@@ -57,33 +56,25 @@ class RoomResolverTest {
                 }
             }
         }
-        assertTrue(seen > 0, "expected some large rooms");
+        assertTrue(large > 0, "expected some large rooms");
     }
 
     @Test
-    void largeRoomsNeverOverlap() {
+    void roomsNeverOverlap() {
         Map<CellPos, RoomResolver.Placement> owner = new HashMap<>();
-        for (int x = -30; x < 30; x++)
-            for (int y = 0; y < 12; y++)
-                for (int z = -30; z < 30; z++) {
-                    RoomResolver.Placement p = RESOLVER.resolve(7L, new CellPos(x, y, z));
-                    if (!p.room().isLarge()) continue;
-                    RoomResolver.Placement prev = owner.put(new CellPos(x, y, z), p);
+        for (int x = -20; x < 20; x++)
+            for (int y = 0; y < 10; y++)
+                for (int z = -20; z < 20; z++) {
+                    CellPos cell = new CellPos(x, y, z);
+                    RoomResolver.Placement p = RESOLVER.resolve(7L, cell);
+                    RoomResolver.Placement prev = owner.put(cell, p);
                     assertTrue(prev == null || prev.equals(p));
                 }
     }
 
     @Test
-    void zeroChanceMeansNoLargeRooms() {
-        RoomResolver r = new RoomResolver(List.of(BASIC, HALL), 6, 0);
-        for (int x = -20; x < 20; x++)
-            for (int z = -20; z < 20; z++)
-                assertFalse(r.resolve(5L, new CellPos(x, 0, z)).room().isLarge());
-    }
-
-    @Test
-    void smallRoomWeightsAreRespected() {
-        RoomResolver r = new RoomResolver(List.of(BASIC, RARE), 8, 0);
+    void weightsAreRespectedAmongSingleCellRooms() {
+        RoomResolver r = new RoomResolver(List.of(BASIC, RARE));
         int basic = 0, total = 0;
         for (int x = 0; x < 200; x++)
             for (int z = 0; z < 200; z++) {
@@ -95,12 +86,28 @@ class RoomResolverTest {
     }
 
     @Test
-    void rejectsLargeRoomBiggerThanSpacing() {
-        assertThrows(IllegalArgumentException.class, () -> new RoomResolver(List.of(BASIC, HALL), 2, 100));
+    void heavierLargeRoomsAppearMoreOften() {
+        RoomDefinition common = new RoomDefinition(id("common"), new Vec3i(2, 1, 2), 8, Optional.empty());
+        RoomDefinition scarce = new RoomDefinition(id("scarce"), new Vec3i(2, 1, 2), 1, Optional.empty());
+        RoomResolver r = new RoomResolver(List.of(BASIC, common, scarce));
+        int c = 0, s = 0;
+        for (int x = 0; x < 120; x++)
+            for (int z = 0; z < 120; z++) {
+                RoomDefinition room = r.resolve(3L, new CellPos(x, 0, z)).room();
+                if (room == common) c++;
+                if (room == scarce) s++;
+            }
+        assertTrue(c > 3 * s, "common " + c + " scarce " + s);
     }
 
     @Test
-    void rejectsLibraryWithoutSmallRooms() {
-        assertThrows(IllegalArgumentException.class, () -> new RoomResolver(List.of(HALL), 8, 100));
+    void rejectsRoomsLargerThanMaxSize() {
+        RoomDefinition huge = new RoomDefinition(id("huge"), new Vec3i(9, 1, 1), 1, Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> new RoomResolver(List.of(BASIC, huge)));
+    }
+
+    @Test
+    void rejectsLibraryWithoutSingleCellRooms() {
+        assertThrows(IllegalArgumentException.class, () -> new RoomResolver(List.of(HALL)));
     }
 }

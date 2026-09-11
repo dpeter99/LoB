@@ -4,22 +4,25 @@ import com.dpeter99.lob.world.CellHash;
 import com.dpeter99.lob.world.CellPos;
 import net.minecraft.core.Vec3i;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Decides which room occupies each cell, as a pure function of the world seed and the cell.
  * <p>
- * Large rooms live on a lattice of cubic "slots" of {@code spacing} cells. Each slot is hashed to
- * decide whether it holds a large room, which one, and where inside the slot it sits. Because every
- * large room fits inside its slot, a cell only needs to inspect its own slot. Cells not covered by a
- * large room get a weighted-random small room.
+ * Every cell is a potential <em>anchor</em>: its hash picks one room by weight from the whole
+ * room list and gives the anchor a priority. A room anchored at {@code a} covers the cells
+ * {@code [a, a + size)}. An anchor is placed only if its priority beats every other anchor whose
+ * footprint would intersect its own, so placed rooms never overlap and the decision for a cell
+ * only depends on anchors within {@code maxSize} cells of it. Cells left uncovered by that rule
+ * get a single-cell room picked by weight among the single-cell rooms.
  */
 public final class RoomResolver {
-    private static final long SALT_SMALL = 0x534D414C4C524F4DL;
-    private static final long SALT_LARGE_PRESENT = 0x4C41524745505245L;
-    private static final long SALT_LARGE_PICK = 0x4C41524745504943L;
-    private static final long SALT_LARGE_OFFSET = 0x4C4152474F464653L;
+    /** Upper bound on room size per axis, keeps the neighbourhood search small. */
+    public static final int MAX_SIZE = 8;
+
+    private static final long SALT_PICK = 0x524F4F4D5049434BL;
+    private static final long SALT_PRIORITY = 0x524F4F4D50524921L;
+    private static final long SALT_FILL = 0x524F4F4D46494C4CL;
 
     /** A room instance: which room and the cell holding its lowest corner. */
     public record Placement(RoomDefinition room, CellPos origin) {
@@ -29,73 +32,96 @@ public final class RoomResolver {
                     && cell.y() >= origin.y() && cell.y() < origin.y() + s.getY()
                     && cell.z() >= origin.z() && cell.z() < origin.z() + s.getZ();
         }
+
+        boolean intersects(Placement other) {
+            Vec3i s = room.sizeInCells();
+            Vec3i o = other.room.sizeInCells();
+            return origin.x() < other.origin.x() + o.getX() && other.origin.x() < origin.x() + s.getX()
+                    && origin.y() < other.origin.y() + o.getY() && other.origin.y() < origin.y() + s.getY()
+                    && origin.z() < other.origin.z() + o.getZ() && other.origin.z() < origin.z() + s.getZ();
+        }
     }
 
-    private final List<RoomDefinition> small;
-    private final int smallTotalWeight;
-    private final List<RoomDefinition> large;
-    private final int largeTotalWeight;
-    private final int spacing;
-    private final int largeChancePercent;
+    private final List<RoomDefinition> rooms;
+    private final int totalWeight;
+    private final List<RoomDefinition> singleCellRooms;
+    private final int singleCellWeight;
+    private final int maxSize;
 
-    public RoomResolver(List<RoomDefinition> rooms, int spacing, int largeChancePercent) {
-        if (spacing < 1) {
-            throw new IllegalArgumentException("large_room_spacing must be at least 1");
+    public RoomResolver(List<RoomDefinition> rooms) {
+        if (rooms.isEmpty()) {
+            throw new IllegalArgumentException("A library needs at least one room");
         }
-        List<RoomDefinition> small = new ArrayList<>();
-        List<RoomDefinition> large = new ArrayList<>();
+        int max = 1;
         for (RoomDefinition room : rooms) {
-            if (room.isLarge()) {
-                Vec3i s = room.sizeInCells();
-                if (s.getX() > spacing || s.getY() > spacing || s.getZ() > spacing) {
-                    throw new IllegalArgumentException("Large room " + room.template() + " is " + s
-                            + " cells but must fit inside the large_room_spacing of " + spacing);
-                }
-                large.add(room);
-            } else {
-                small.add(room);
+            Vec3i s = room.sizeInCells();
+            if (s.getX() > MAX_SIZE || s.getY() > MAX_SIZE || s.getZ() > MAX_SIZE) {
+                throw new IllegalArgumentException("Room " + room.template() + " is " + s + " cells; at most " + MAX_SIZE + " per axis");
             }
+            max = Math.max(max, Math.max(s.getX(), Math.max(s.getY(), s.getZ())));
         }
-        if (small.isEmpty()) {
-            throw new IllegalArgumentException("A library needs at least one 1x1x1 room");
+        this.rooms = List.copyOf(rooms);
+        this.totalWeight = rooms.stream().mapToInt(RoomDefinition::weight).sum();
+        this.singleCellRooms = rooms.stream().filter(r -> !r.isLarge()).toList();
+        this.singleCellWeight = singleCellRooms.stream().mapToInt(RoomDefinition::weight).sum();
+        this.maxSize = max;
+        if (singleCellRooms.isEmpty()) {
+            throw new IllegalArgumentException("A library needs at least one 1x1x1 room to fill gaps between larger rooms");
         }
-        this.small = List.copyOf(small);
-        this.large = List.copyOf(large);
-        this.smallTotalWeight = small.stream().mapToInt(RoomDefinition::weight).sum();
-        this.largeTotalWeight = large.stream().mapToInt(RoomDefinition::weight).sum();
-        this.spacing = spacing;
-        this.largeChancePercent = largeChancePercent;
     }
 
     public Placement resolve(long seed, CellPos cell) {
-        Placement largePlacement = largeRoomInSlot(seed, slotOf(cell));
-        if (largePlacement != null && largePlacement.contains(cell)) {
-            return largePlacement;
+        // Any anchor within maxSize-1 cells below/behind the cell could cover it.
+        for (int dx = 0; dx < maxSize; dx++) {
+            for (int dy = 0; dy < maxSize; dy++) {
+                for (int dz = 0; dz < maxSize; dz++) {
+                    CellPos anchor = cell.offset(-dx, -dy, -dz);
+                    Placement candidate = anchored(seed, anchor);
+                    if (candidate.contains(cell) && isPlaced(seed, candidate)) {
+                        return candidate;
+                    }
+                }
+            }
         }
-        RoomDefinition room = pick(small, smallTotalWeight, CellHash.hash(seed, cell, SALT_SMALL));
-        return new Placement(room, cell);
+        return new Placement(pick(singleCellRooms, singleCellWeight, CellHash.hash(seed, cell, SALT_FILL)), cell);
     }
 
-    private CellPos slotOf(CellPos cell) {
-        return new CellPos(Math.floorDiv(cell.x(), spacing), Math.floorDiv(cell.y(), spacing), Math.floorDiv(cell.z(), spacing));
+    /** The room this anchor would place if nothing outranks it. */
+    private Placement anchored(long seed, CellPos anchor) {
+        return new Placement(pick(rooms, totalWeight, CellHash.hash(seed, anchor, SALT_PICK)), anchor);
     }
 
-    /** The large room placed in a lattice slot, or null if the slot has none. */
-    private Placement largeRoomInSlot(long seed, CellPos slot) {
-        if (large.isEmpty() || largeChancePercent <= 0) {
-            return null;
+    private long priority(long seed, CellPos anchor) {
+        return CellHash.hash(seed, anchor, SALT_PRIORITY);
+    }
+
+    /** True if no intersecting anchor has a higher priority. Ties are broken by anchor order. */
+    private boolean isPlaced(long seed, Placement candidate) {
+        long own = priority(seed, candidate.origin());
+        Vec3i s = candidate.room().sizeInCells();
+        CellPos o = candidate.origin();
+        for (int x = o.x() - maxSize + 1; x < o.x() + s.getX(); x++) {
+            for (int y = o.y() - maxSize + 1; y < o.y() + s.getY(); y++) {
+                for (int z = o.z() - maxSize + 1; z < o.z() + s.getZ(); z++) {
+                    CellPos other = new CellPos(x, y, z);
+                    if (other.equals(o)) continue;
+                    Placement rival = anchored(seed, other);
+                    if (!rival.intersects(candidate)) continue;
+                    long theirs = priority(seed, other);
+                    if (theirs > own || (theirs == own && compare(other, o) < 0)) {
+                        return false;
+                    }
+                }
+            }
         }
-        if (CellHash.bounded(CellHash.hash(seed, slot, SALT_LARGE_PRESENT), 100) >= largeChancePercent) {
-            return null;
-        }
-        RoomDefinition room = pick(large, largeTotalWeight, CellHash.hash(seed, slot, SALT_LARGE_PICK));
-        long offsetHash = CellHash.hash(seed, slot, SALT_LARGE_OFFSET);
-        Vec3i s = room.sizeInCells();
-        int ox = CellHash.bounded(offsetHash, spacing - s.getX() + 1);
-        int oy = CellHash.bounded(offsetHash >>> 21, spacing - s.getY() + 1);
-        int oz = CellHash.bounded(offsetHash >>> 42, spacing - s.getZ() + 1);
-        CellPos origin = new CellPos(slot.x() * spacing + ox, slot.y() * spacing + oy, slot.z() * spacing + oz);
-        return new Placement(room, origin);
+        return true;
+    }
+
+    private static int compare(CellPos a, CellPos b) {
+        int c = Integer.compare(a.x(), b.x());
+        if (c == 0) c = Integer.compare(a.y(), b.y());
+        if (c == 0) c = Integer.compare(a.z(), b.z());
+        return c;
     }
 
     private static RoomDefinition pick(List<RoomDefinition> rooms, int totalWeight, long hash) {
