@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "B": "minecraft:book",
+    "E": "minecraft:ender_eye",
+    "G": "minecraft:gold_ingot"
+  },
+  "pattern": [
+    " E ",
+    "GBG",
+    " G "
+  ],
+  "result": {
+    "id": "lob:librarian_key"
+  }
+}

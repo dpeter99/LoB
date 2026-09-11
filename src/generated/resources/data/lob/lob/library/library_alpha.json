@@ -1,0 +1,9 @@
+{
+  "rooms": [
+    "lob:room_basic",
+    "lob:room_crossing",
+    "lob:room_stairwell",
+    "lob:hall_grand_to_beta",
+    "lob:hall_exit"
+  ]
+}

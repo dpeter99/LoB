@@ -1,0 +1,9 @@
+{
+  "block.lob.library_portal": "Library Portal",
+  "item.lob.librarian_key": "Librarian's Key",
+  "item.lob.librarian_key.missing_dimension": "The library %s does not exist",
+  "lob.configuration.debugLogging": "Debug logging",
+  "lob.configuration.defaultEntryDimension": "Default entry dimension",
+  "lob.configuration.portalCooldownTicks": "Portal cooldown (ticks)",
+  "lob.configuration.title": "Library of Babel Configuration"
+}

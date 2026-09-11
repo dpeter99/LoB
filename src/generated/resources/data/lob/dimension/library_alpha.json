@@ -1,0 +1,8 @@
+{
+  "type": "lob:library",
+  "generator": {
+    "type": "lob:library",
+    "biome": "lob:library",
+    "library": "lob:library_alpha"
+  }
+}

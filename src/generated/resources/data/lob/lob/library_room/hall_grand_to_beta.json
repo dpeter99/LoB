@@ -1,0 +1,10 @@
+{
+  "portal_target": "lob:library_beta",
+  "size_in_cells": [
+    3,
+    2,
+    3
+  ],
+  "template": "lob:hall_grand",
+  "weight": 3
+}

@@ -1,0 +1,9 @@
+{
+  "portal_target": "minecraft:overworld",
+  "size_in_cells": [
+    2,
+    1,
+    2
+  ],
+  "template": "lob:hall_exit"
+}

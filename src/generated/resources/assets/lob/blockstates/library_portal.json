@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "lob:block/library_portal"
+    }
+  }
+}

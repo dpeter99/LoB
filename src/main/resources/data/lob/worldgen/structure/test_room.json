@@ -1,8 +1,0 @@
-{
-  "type": "lob:grid_structure",
-  "start_pool": "lob:test_room_pool",
-  "start_jigsaw_name": "",
-  "spawn_overrides": {},
-  "biomes": "lob:lob_biome",
-  "step": "surface_structures"
-}
