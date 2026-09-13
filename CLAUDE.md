@@ -28,7 +28,8 @@ Mod id `lob`, packages `com.dpeter99.lob` and `com.dpeter99.borgeslib`.
 ```
 
 Enter a library in game: `/execute in lob:library_alpha run tp @s 8 17 8`. `/lob cell` prints the resolved
-room at your position.
+room at your position. `/lob book [index]` (or `/lob book <cellX> <cellY> <cellZ> [index]`) gives a library book
+addressed to that cell.
 
 ## Layout
 
@@ -44,7 +45,13 @@ room at your position.
 - `tools/gen_room.py` — generates the shipped `.nbt` room templates (16-cube shells, doorways centred on every
   wall segment at local y 1..4, `lob:library_portal` blocks in halls). Regenerate with
   `python3 tools/gen_room.py src/main/resources/data/lob/structure`.
-- `borgeslib/EncodingLib` — keyed bijection for future book addressing; no gameplay consumer yet.
+- `book/BookAddress` (data component `lob:book_address`: dimension + cell + index, plus pure cell↔number
+  bijection), `book/BookAlphabet`, `book/BookText` (pure: number → base-25 pages under a `BookLayout`),
+  `item/LibraryBookItem` — the book holds only its address; pages are regenerated into the vanilla
+  `written_book_content` component on every open, so the stock book screen shows them. Book size comes
+  from `LobConfig` (`bookPages`, `bookLinesPerPage`, `bookCharsPerLine`, `booksPerCell`).
+- `borgeslib/EncodingLib` — keyed bijection for future book shuffling; not wired yet, book text is the plain
+  address number so consecutive books look alike.
 
 ## Rules
 

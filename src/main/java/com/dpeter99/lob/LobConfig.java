@@ -21,6 +21,22 @@ public final class LobConfig {
             .comment("Log room placement decisions and enable debug commands.")
             .define("debugLogging", false);
 
+    public static final ModConfigSpec.IntValue BOOK_PAGES = BUILDER
+            .comment("Pages in a library book. The vanilla book screen shows about 14 lines of about 19 characters per page.")
+            .defineInRange("bookPages", 8, 1, 100);
+
+    public static final ModConfigSpec.IntValue BOOK_LINES_PER_PAGE = BUILDER
+            .comment("Lines of text on each page of a library book.")
+            .defineInRange("bookLinesPerPage", 14, 1, 14);
+
+    public static final ModConfigSpec.IntValue BOOK_CHARS_PER_LINE = BUILDER
+            .comment("Characters on each line of a library book.")
+            .defineInRange("bookCharsPerLine", 19, 1, 64);
+
+    public static final ModConfigSpec.IntValue BOOKS_PER_CELL = BUILDER
+            .comment("How many distinct books each 16x16x16 library cell holds.")
+            .defineInRange("booksPerCell", 640, 1, 1_000_000);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private LobConfig() {

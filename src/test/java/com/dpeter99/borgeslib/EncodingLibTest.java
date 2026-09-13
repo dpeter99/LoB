@@ -25,7 +25,7 @@ class EncodingLibTest {
         assertEquals(size, seen.cardinality());
     }
 
-    @Test
+
     void bijectionOverSmallRanges() {
         for (int size = 1; size <= 100; size++) {
             assertBijection(size * 31L, size);

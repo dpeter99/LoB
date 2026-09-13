@@ -2,10 +2,13 @@ package com.dpeter99.lob.registry;
 
 import com.dpeter99.lob.LobMod;
 import com.dpeter99.lob.block.LibraryPortalBlock;
+import com.dpeter99.lob.book.BookAddress;
 import com.dpeter99.lob.item.LibrarianKeyItem;
+import com.dpeter99.lob.item.LibraryBookItem;
 import com.dpeter99.lob.world.LibraryChunkGenerator;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -43,6 +46,8 @@ public final class ModRegistries {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(LobMod.MOD_ID);
     public static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, LobMod.MOD_ID);
+    public static final DeferredRegister.DataComponents DATA_COMPONENTS =
+            DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, LobMod.MOD_ID);
 
     public static final DeferredHolder<MapCodec<? extends ChunkGenerator>, MapCodec<LibraryChunkGenerator>> LIBRARY_GENERATOR =
             CHUNK_GENERATORS.register("library", () -> LibraryChunkGenerator.CODEC);
@@ -63,6 +68,15 @@ public final class ModRegistries {
     public static final DeferredItem<LibrarianKeyItem> LIBRARIAN_KEY = ITEMS.registerItem("librarian_key",
             LibrarianKeyItem::new, p -> p.stacksTo(1).rarity(Rarity.UNCOMMON));
 
+    /** Where in a library a book was taken from; its pages derive from this. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<BookAddress>> BOOK_ADDRESS =
+            DATA_COMPONENTS.registerComponentType("book_address", b -> b
+                    .persistent(BookAddress.CODEC)
+                    .networkSynchronized(BookAddress.STREAM_CODEC));
+
+    public static final DeferredItem<LibraryBookItem> LIBRARY_BOOK = ITEMS.registerItem("library_book",
+            LibraryBookItem::new, p -> p.stacksTo(1));
+
     /** Where a player was standing before the key took them into a library. */
     public static final Supplier<AttachmentType<Optional<GlobalPos>>> RETURN_POINT = ATTACHMENTS.register("return_point",
             () -> AttachmentType.<Optional<GlobalPos>>builder(Optional::empty)
@@ -75,12 +89,14 @@ public final class ModRegistries {
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
         ATTACHMENTS.register(modBus);
+        DATA_COMPONENTS.register(modBus);
     }
 
     @SubscribeEvent
     static void addCreativeTabEntries(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(LIBRARIAN_KEY);
+            event.accept(LIBRARY_BOOK);
         } else if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(LIBRARY_PORTAL_ITEM);
         }
